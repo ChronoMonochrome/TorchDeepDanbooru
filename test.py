@@ -35,7 +35,7 @@ def evaluate(img_filename, threshold):
             
     return res
     
-def handle_img(img_filename, filemask, force, threshold):
+def handle_img(img_filename, filemask, force, threshold, output_format):
     print(f"Image: {img_filename}")
     if filemask != "STDOUT":
         output_file = filemask % os.path.splitext(img_filename)[0]
@@ -44,19 +44,33 @@ def handle_img(img_filename, filemask, force, threshold):
         else:
             tags = evaluate(img_filename, threshold)
             with open(output_file, "w") as f:
-                for tag, confidence in tags.items():
-                    f.write(f"{tag}: {confidence}\n")
+                if output_format == "plain":
+                    for tag, confidence in tags.items():
+                        f.write(f"{tag}: {confidence}\n")
+                elif output_format == "danbooru":
+                    rating = [tag for tag in tags.keys() if tag.startswith("rating:")]
+                    tags = [tag for tag in tags.keys() if not tag.startswith("rating:")]
+                    if rating:
+                        rating = rating[0]
+                    else:
+                        rating = "rating:safe"
+                    f.write(f"{os.path.basename(img_filename)}\n")
+                    f.write(" ".join(tags) + "\n")
+                    f.write(f"{rating}\n")
+                else:
+                    print(f"Unknown output format {output_format}")
+                    exit()
     else:
         tags = evaluate(img_filename, threshold)
         for tag, confidence in tags.items():
             print(f"{tag}: {confidence}")
             
-def handle_dir(img_directory, filemask, force, threshold):
+def handle_dir(img_directory, filemask, force, threshold, output_format):
     for file in os.listdir(img_directory):
         if file.endswith(".jpg") or file.endswith(".png"):
             img_filename = os.path.join(img_directory, file)
-            handle_img(img_filename, filemask, force, threshold)
-
+            handle_img(img_filename, filemask, force, threshold, output_format)
+                    
 def mandatory_flags(args):
     if not (args.image or args.directory):
         parser.error("Either -i/--image or -d/--directory should be provided.")
@@ -67,6 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--directory", type=str, help="Path to directory containing images")
     parser.add_argument("-f", "--filemask", type=str, default="%s.txt", help="Output filename mask, use STDOUT to print tags instead")
     parser.add_argument("-t", "--threshold", type=float, default=0.5, help="Threshold value for discarding tags with confidence lower than this value")
+    parser.add_argument("-o", "--output-format", type=str, default="danbooru", help="Output file format. Use danbooru (default) or plain (with confidence levels included).")
     parser.add_argument("--force", action="store_true", help="Force re-evaluate and overwrite output file")
 
     args = parser.parse_args()
@@ -89,6 +104,6 @@ if __name__ == "__main__":
         model.cuda()
 
     if args.image:
-        handle_img(args.image, args.filemask, args.force, args.threshold)
+        handle_img(args.image, args.filemask, args.force, args.threshold, args.output_format)
     elif args.directory:
-        handle_dir(args.directory, args.filemask, args.force, args.threshold)
+        handle_dir(args.directory, args.filemask, args.force, args.threshold, args.output_format)
