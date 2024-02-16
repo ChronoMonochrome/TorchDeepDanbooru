@@ -35,29 +35,35 @@ def handle_img(img_filename, filemask, force, threshold, output_format):
         output_file = filemask % os.path.splitext(img_filename)[0]
         if os.path.exists(output_file) and not force:
             print(f"Output file {output_file} already exists. Skipping evaluation.")
-        else:
-            tags = evaluate(img_filename, threshold)
-            with open(output_file, "w") as f:
-                if output_format == "plain":
-                    for tag, confidence in tags.items():
-                        f.write(f"{tag}: {confidence}\n")
-                elif output_format == "danbooru":
-                    rating = [tag for tag in tags.keys() if tag.startswith("rating:")]
-                    tags = [tag for tag in tags.keys() if not tag.startswith("rating:")]
-                    if rating:
-                        rating = rating[0]
-                    else:
-                        rating = "rating:safe"
-                    f.write(f"{os.path.basename(img_filename)}\n")
-                    f.write(" ".join(tags) + "\n")
-                    f.write(f"{rating}\n")
-                else:
-                    print(f"Unknown output format {output_format}")
-                    exit()
+            return
+
+    fd = None
+    if filemask == "STDOUT":
+        print_func = lambda x: print(x, end="")
     else:
-        tags = evaluate(img_filename, threshold)
+        print_func = lambda x: fd.write(x)
+        fd = open(output_file, "w")
+    tags = evaluate(img_filename, threshold)
+
+    if output_format == "plain":
         for tag, confidence in tags.items():
-            print(f"{tag}: {confidence}")
+            print_func(f"{tag}: {confidence}\n")
+    elif output_format == "danbooru":
+        rating = [tag for tag in tags.keys() if tag.startswith("rating:")]
+        tags = [tag for tag in tags.keys() if not tag.startswith("rating:")]
+        if rating:
+            rating = rating[0]
+        else:
+            rating = "rating:safe"
+        print_func(f"{os.path.basename(img_filename)}\n")
+        print_func(" ".join(tags) + "\n")
+        print_func(f"{rating}\n")
+    else:
+        print(f"Unknown output format {output_format}")
+        if fd: fd.close()
+        exit()
+
+    if fd: fd.close()
             
 def handle_dir(img_directory, filemask, force, threshold, output_format):
     for file in os.listdir(img_directory):
