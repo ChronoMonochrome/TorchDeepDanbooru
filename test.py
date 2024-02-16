@@ -7,7 +7,7 @@ import tqdm
 
 import deep_danbooru_model
 
-def evaluate(img_filename):
+def evaluate(img_filename, threshold):
     res = dict()
     pic = Image.open(img_filename).convert("RGB").resize((512, 512))
     a = np.expand_dims(np.array(pic, dtype=np.float32), 0) / 255
@@ -30,28 +30,28 @@ def evaluate(img_filename):
             model(x)
 
     for i, p in enumerate(y):
-        if p >= 0.5:
+        if p >= threshold:
             res[model.tags[i]] = p
             
     return res
     
-def handle_img(img_filename, filemask, force):
+def handle_img(img_filename, filemask, force, threshold):
     print(f"Image: {img_filename}")
     if filemask != "STDOUT":
         output_file = filemask % os.path.splitext(img_filename)[0]
         if os.path.exists(output_file) and not force:
             print(f"Output file {output_file} already exists. Skipping evaluation.")
         else:
-            tags = evaluate(img_filename)
+            tags = evaluate(img_filename, threshold)
             with open(output_file, "w") as f:
                 for tag, confidence in tags.items():
                     f.write(f"{tag}: {confidence}\n")
     else:
-        tags = evaluate(img_filename)
+        tags = evaluate(img_filename, threshold)
         for tag, confidence in tags.items():
             print(f"{tag}: {confidence}")
             
-def handle_dir(img_directory, filemask, force):
+def handle_dir(img_directory, filemask, force, threshold):
     for file in os.listdir(img_directory):
         if file.endswith(".jpg") or file.endswith(".png"):
             img_filename = os.path.join(img_directory, file)
@@ -61,7 +61,7 @@ def handle_dir(img_directory, filemask, force):
                 if os.path.exists(output_file) and not force:
                     print(f"Output file {output_file} already exists. Skipping evaluation.")
                 else:
-                    tags = evaluate(img_filename)
+                    tags = evaluate(img_filename, threshold)
                     with open(output_file, "w") as f:
                         for tag, confidence in tags.items():
                             f.write(f"{tag}: {confidence}\n")
@@ -79,6 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--image", type=str, help="Path to image file")
     parser.add_argument("-d", "--directory", type=str, help="Path to directory containing images")
     parser.add_argument("-f", "--filemask", type=str, default="%s.txt", help="Output filename mask, use STDOUT to print tags instead")
+    parser.add_argument("-t", "--threshold", type=float, default=0.5, help="Threshold value for discarding tags with confidence lower than this value")
     parser.add_argument("--force", action="store_true", help="Force re-evaluate and overwrite output file")
 
     args = parser.parse_args()
@@ -101,6 +102,6 @@ if __name__ == "__main__":
         model.cuda()
 
     if args.image:
-        handle_img(args.image, args.filemask, args.force)
+        handle_img(args.image, args.filemask, args.force, args.threshold)
     elif args.directory:
-        handle_dir(args.directory, args.filemask, args.force)
+        handle_dir(args.directory, args.filemask, args.force, args.threshold)
