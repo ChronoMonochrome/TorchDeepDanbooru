@@ -55,21 +55,8 @@ def handle_dir(img_directory, filemask, force, threshold):
     for file in os.listdir(img_directory):
         if file.endswith(".jpg") or file.endswith(".png"):
             img_filename = os.path.join(img_directory, file)
-            print(f"Image: {img_filename}")
-            if filemask != "STDOUT":
-                output_file = filemask % os.path.splitext(img_filename)[0]
-                if os.path.exists(output_file) and not force:
-                    print(f"Output file {output_file} already exists. Skipping evaluation.")
-                else:
-                    tags = evaluate(img_filename, threshold)
-                    with open(output_file, "w") as f:
-                        for tag, confidence in tags.items():
-                            f.write(f"{tag}: {confidence}\n")
-            else:
-                print(f"Image: {img_filename}")
-                for tag, confidence in tags.items():
-                    print(f"{tag}: {confidence}")
-                    
+            handle_img(img_filename, filemask, force, threshold)
+
 def mandatory_flags(args):
     if not (args.image or args.directory):
         parser.error("Either -i/--image or -d/--directory should be provided.")
