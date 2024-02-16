@@ -3,7 +3,6 @@ import numpy as np
 import torch
 import argparse
 import os
-import tqdm
 
 import deep_danbooru_model
 
@@ -22,12 +21,7 @@ def evaluate(img_filename, threshold):
         if g_cuda_available:
             x = x.cuda()
 
-        # first run
         y = model(x)[0].detach().cpu().numpy()
-
-        # measure performance
-        for n in tqdm.tqdm(range(10)):
-            model(x)
 
     for i, p in enumerate(y):
         if p >= threshold:
