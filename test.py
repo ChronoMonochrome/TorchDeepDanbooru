@@ -35,29 +35,36 @@ def evaluate(img_filename):
             
     return res
     
-def handle_img(img_filename, filemask):
-    tags = evaluate(img_filename)
+def handle_img(img_filename, filemask, force):
     print(f"Image: {img_filename}")
     if filemask != "STDOUT":
         output_file = filemask % os.path.splitext(img_filename)[0]
-        with open(output_file, "w") as f:
-            for tag, confidence in tags.items():
-                f.write(f"{tag}: {confidence}\n")
+        if os.path.exists(output_file) and not force:
+            print(f"Output file {output_file} already exists. Skipping evaluation.")
+        else:
+            tags = evaluate(img_filename)
+            with open(output_file, "w") as f:
+                for tag, confidence in tags.items():
+                    f.write(f"{tag}: {confidence}\n")
     else:
+        tags = evaluate(img_filename)
         for tag, confidence in tags.items():
             print(f"{tag}: {confidence}")
             
-def handle_dir(img_directory, filemask):
+def handle_dir(img_directory, filemask, force):
     for file in os.listdir(img_directory):
         if file.endswith(".jpg") or file.endswith(".png"):
             img_filename = os.path.join(img_directory, file)
             print(f"Image: {img_filename}")
-            tags = evaluate(img_filename)
             if filemask != "STDOUT":
                 output_file = filemask % os.path.splitext(img_filename)[0]
-                with open(output_file, "w") as f:
-                    for tag, confidence in tags.items():
-                        f.write(f"{tag}: {confidence}\n")
+                if os.path.exists(output_file) and not force:
+                    print(f"Output file {output_file} already exists. Skipping evaluation.")
+                else:
+                    tags = evaluate(img_filename)
+                    with open(output_file, "w") as f:
+                        for tag, confidence in tags.items():
+                            f.write(f"{tag}: {confidence}\n")
             else:
                 print(f"Image: {img_filename}")
                 for tag, confidence in tags.items():
@@ -72,6 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--image", type=str, help="Path to image file")
     parser.add_argument("-d", "--directory", type=str, help="Path to directory containing images")
     parser.add_argument("-f", "--filemask", type=str, default="%s.txt", help="Output filename mask, use STDOUT to print tags instead")
+    parser.add_argument("--force", action="store_true", help="Force re-evaluate and overwrite output file")
 
     args = parser.parse_args()
     mandatory_flags(args)
@@ -93,6 +101,6 @@ if __name__ == "__main__":
         model.cuda()
 
     if args.image:
-        handle_img(args.image, args.filemask)
+        handle_img(args.image, args.filemask, args.force)
     elif args.directory:
-        handle_dir(args.directory, args.filemask)
+        handle_dir(args.directory, args.filemask, args.force)
